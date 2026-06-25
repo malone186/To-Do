@@ -16,6 +16,7 @@ interface Todo {
   dueDate: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  user?: { email: string } | null;
 }
 
 interface TodoListContainerProps {

@@ -42,6 +42,15 @@ interface StatsData {
   totalTodos: number;
   completedTodos: number;
   completionRate: number;
+  priorityStats?: {
+    high: number;
+    medium: number;
+    low: number;
+  };
+  categoryStats?: {
+    name: string;
+    count: number;
+  }[];
 }
 
 interface Props {
@@ -479,6 +488,168 @@ export default function AdminDashboardClient({
                 <div className="flex-1 bg-zinc-950 rounded-full h-2 overflow-hidden border border-zinc-800">
                   <div className="bg-blue-500 h-full transition-all" style={{ width: `${stats.completionRate}%` }} />
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 시각화 통계 그래프 섹션 */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* 우선순위 분포 도넛 차트 */}
+            <div className="p-6 backdrop-blur-md bg-zinc-900/40 border border-zinc-800 rounded-2xl shadow-lg flex flex-col">
+              <h3 className="text-sm font-bold text-zinc-200 mb-4 flex items-center gap-1.5">
+                📊 우선순위 등록 분포
+              </h3>
+              
+              {/* 도넛 그래프 본체 */}
+              <div className="flex-1 flex flex-col sm:flex-row items-center justify-around gap-6 py-4">
+                <div className="relative w-36 h-36 shrink-0">
+                  {/* SVG 도넛 */}
+                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                    {/* Background Circle */}
+                    <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="rgba(63, 63, 70, 0.2)" strokeWidth="3.5" />
+                    
+                    {/* 세 개의 우선순위 원호 렌더링 */}
+                    {(() => {
+                      const highVal = stats.priorityStats?.high || 0;
+                      const medVal = stats.priorityStats?.medium || 0;
+                      const lowVal = stats.priorityStats?.low || 0;
+                      const total = highVal + medVal + lowVal;
+                      
+                      if (total === 0) return null;
+                      
+                      const highPct = (highVal / total) * 105;
+                      const medPct = (medVal / total) * 100;
+                      const lowPct = (lowVal / total) * 100;
+                      
+                      // 링 둘레: 2 * PI * r = 2 * 3.14159 * 15.915 = 100
+                      const highStroke = `${highPct} ${100 - highPct}`;
+                      const medStroke = `${medPct} ${100 - medPct}`;
+                      const lowStroke = `${lowPct} ${100 - lowPct}`;
+                      
+                      const highOffset = 0;
+                      const medOffset = 100 - highPct;
+                      const lowOffset = 100 - highPct - medPct;
+                      
+                      return (
+                        <>
+                          {/* HIGH (Red) */}
+                          {highVal > 0 && (
+                            <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#ef4444" strokeWidth="3.5" 
+                                    strokeDasharray={highStroke} strokeDashoffset={highOffset} 
+                                    className="transition-all duration-700 ease-in-out" />
+                          )}
+                          {/* MEDIUM (Amber) */}
+                          {medVal > 0 && (
+                            <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#f59e0b" strokeWidth="3.5" 
+                                    strokeDasharray={medStroke} strokeDashoffset={medOffset}
+                                    className="transition-all duration-700 ease-in-out" />
+                          )}
+                          {/* LOW (Zinc) */}
+                          {lowVal > 0 && (
+                            <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#71717a" strokeWidth="3.5" 
+                                    strokeDasharray={lowStroke} strokeDashoffset={lowOffset}
+                                    className="transition-all duration-700 ease-in-out" />
+                          )}
+                        </>
+                      );
+                    })()}
+                  </svg>
+                  
+                  {/* 중앙 총합 텍스트 */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-[10px] text-zinc-500 font-semibold uppercase">Total</span>
+                    <span className="text-lg font-black text-white font-mono">
+                      {(stats.priorityStats?.high || 0) + (stats.priorityStats?.medium || 0) + (stats.priorityStats?.low || 0)}
+                    </span>
+                  </div>
+                </div>
+                
+                {/* 우측 범례 피드백 */}
+                <div className="flex flex-col gap-2 flex-1 w-full max-w-[160px] font-sans">
+                  {(() => {
+                    const highVal = stats.priorityStats?.high || 0;
+                    const medVal = stats.priorityStats?.medium || 0;
+                    const lowVal = stats.priorityStats?.low || 0;
+                    const total = highVal + medVal + lowVal;
+                    
+                    const getPctStr = (val: number) => {
+                      if (total === 0) return "0%";
+                      return `${Math.round((val / total) * 100)}%`;
+                    };
+                    
+                    return (
+                      <>
+                        <div className="flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0" />
+                            <span className="text-zinc-400 font-semibold">높음</span>
+                          </div>
+                          <span className="text-zinc-200 font-bold font-mono">{highVal}개 ({getPctStr(highVal)})</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0" />
+                            <span className="text-zinc-400 font-semibold">보통</span>
+                          </div>
+                          <span className="text-zinc-200 font-bold font-mono">{medVal}개 ({getPctStr(medVal)})</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-zinc-500 shrink-0" />
+                            <span className="text-zinc-400 font-semibold">낮음</span>
+                          </div>
+                          <span className="text-zinc-200 font-bold font-mono">{lowVal}개 ({getPctStr(lowVal)})</span>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+            </div>
+
+            {/* 카테고리 TOP 5 막대 그래프 */}
+            <div className="p-6 backdrop-blur-md bg-zinc-900/40 border border-zinc-800 rounded-2xl shadow-lg flex flex-col">
+              <h3 className="text-sm font-bold text-zinc-200 mb-4 flex items-center gap-1.5">
+                📊 인기 카테고리 TOP 5
+              </h3>
+              
+              <div className="flex-1 flex flex-col justify-center gap-3.5 py-2">
+                {stats.categoryStats && stats.categoryStats.length > 0 ? (
+                  (() => {
+                    const maxCount = Math.max(...stats.categoryStats.map(c => c.count), 1);
+                    return stats.categoryStats.map((item, index) => {
+                      const barWidth = `${(item.count / maxCount) * 100}%`;
+                      // 카테고리 순위에 따른 그라데이션 배색 분기
+                      const gradientClass = index === 0
+                        ? "from-blue-600 to-indigo-500"
+                        : index === 1
+                        ? "from-purple-600 to-pink-500"
+                        : "from-zinc-650 to-zinc-500";
+                        
+                      return (
+                        <div key={item.name} className="flex flex-col gap-1 text-xs">
+                          <div className="flex justify-between items-center px-0.5">
+                            <span className="font-bold text-zinc-300 flex items-center gap-1.5">
+                              <span className="text-[10px] text-zinc-550 font-mono">0{index + 1}</span>
+                              {item.name}
+                            </span>
+                            <span className="text-zinc-400 font-bold font-mono">{item.count}개</span>
+                          </div>
+                          
+                          {/* 막대 게이지 바 */}
+                          <div className="h-4 w-full bg-zinc-950 rounded-lg overflow-hidden border border-zinc-800/60 p-[1.5px]">
+                            <div
+                              style={{ width: barWidth }}
+                              className={`h-full rounded-md bg-gradient-to-r ${gradientClass} transition-all duration-600 ease-out`}
+                            />
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()
+                ) : (
+                  <div className="text-center py-12 text-xs text-zinc-500">등록된 카테고리 정보가 없습니다.</div>
+                )}
               </div>
             </div>
           </div>

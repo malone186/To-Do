@@ -10,11 +10,13 @@
 
 보안 계층으로 Next.js 16 파일 규격에 부합하는 **[proxy.ts](file:///c:/study/TODO/src/proxy.ts)** 미들웨어를 두어, 권한이 유효하지 않은 사용자가 어드민 영역에 직접 침투할 수 없도록 사전에 리다이렉트하는 완전 보안 제어를 적용했습니다.
 
+또한, 전체 애플리케이션의 레이아웃을 반응형 고정 좌측 사이드바 구조로 전환하여 일반 사용자(`USER`)와 최고 관리자(`ADMIN`) 모두에게 미려하고 기능적인 통합 네비게이션을 제공합니다.
+
 ---
 
-## ⚙️ 구현 완료된 어드민 5대 핵심 기능
+## ⚙️ 구현 완료된 어드민 6대 핵심 기능
 
-최고 관리자 화면은 일관되고 직관적인 UX 제공을 위해 **3개의 서브 탭(Tab) 구조**로 설계되었으며, 아래 기능들을 완전하게 실시간 지원합니다.
+최고 관리자 화면 및 일반 페이지는 일관되고 직관적인 UX 제공을 위해 **상시 노출형 좌측 사이드바 구조**로 구성되었으며, 아래 기능들을 완전하게 실시간 지원합니다.
 
 ### 1. 회원 관리 및 권한 대행 (User Impersonation)
 * **회원 수동 관리 (CRUD)**: 
@@ -34,7 +36,7 @@
 ### 3. 보안 감사 로그 적재 (Security Audit Trail)
 * **감사 로깅 시스템 (`AuditLog`)**:
   * 관리 권한을 악용한 내부 조작 행위를 추적 및 모니터링하기 위해 별도의 감사 데이터베이스 테이블을 구축했습니다.
-  * **회원 추가(`USER_CREATE`), 회원 편집(`USER_UPDATE`), 회원 삭제(`USER_DELETE`), 공지사항 등록/제거(`NOTICE_CREATE`/`NOTICE_DELETE`), 대행 시작/종료(`USER_IMPERSONATE_START`/`USER_IMPERSONATE_STOP`)** 작업이 일어날 때마다 동작한 어드민의 이메일 정보와 액션 종류, 변경점 상세 내역이 감사 테이블에 실시간 자동 적재됩니다.
+  * **회원 추가(`USER_CREATE`), 회원 편집(`USER_UPDATE`), 회원 삭제(`USER_DELETE`), 공지사항 등록/제거(`NOTICE_CREATE`/`NOTICE_DELETE`), 대행 시작/종료(`USER_IMPERSONATE_START`/`USER_IMPERSONATE_STOP`), 가입 승인/거절(`USER_APPROVE`/`USER_REJECT`)** 작업이 일어날 때마다 동작한 어드민의 이메일 정보와 액션 종류, 변경점 상세 내역이 감사 테이블에 실시간 자동 적재됩니다.
   * 대시보드 내에서 최근 50개의 보안 로그를 역순으로 조회할 수 있습니다.
 
 ### 4. 실시간 공지사항 배포 및 전파 (System Notice Board)
@@ -50,7 +52,13 @@
 * **어드민 승인 및 거절 통합 제어**:
   * 회원 관리 테이블 내에 회원별 가입 상태 배지(`PENDING`, `APPROVED`, `REJECTED`)가 시각화됩니다.
   * `PENDING` 유저는 `[승인]` 및 `[거절]` 버튼으로 즉시 처리가 가능하고, `REJECTED` 유저 또한 `[재승인]`을 할 수 있도록 지원합니다.
-  * 승인/거절 이벤트 발생 시 이에 상응하는 감사 로그(`USER_APPROVE`, `USER_REJECT`)가 로그에 적재되어 변경 이력을 추적할 수 있습니다.
+
+### 6. 상시 노출식 좌측 사이드바 & 통계 그래프 시각화
+* **상시 고정 사이드바 (`AppLayout`)**:
+  * 데스크톱 화면에서 좌측 영역에 상시 고정 노출되는 내비게이션 바(가로 폭 `w-64`)를 탑재하여 화면 겹침 현상을 원천 방지했습니다. (모바일/태블릿에서는 상단 고정 헤더 탑바로 반응형 호환 전환)
+  * 프로필 카드, 미니 달성율 게이지바, 메뉴 이동 버튼, 다크모드 컨트롤 스위치, 로그아웃 기능을 집약하여 접근성을 극대화했습니다.
+* **SVG 시각화 차트**:
+  * 외부 차트 라이브러리 미설치 기조(순수 React/SVG)를 유지하여 의존성 충돌을 봉쇄하고, 우선순위 분포를 집계한 **SVG 도넛 차트**와 상위 5개 인기 카테고리를 비율에 따라 채워주는 **가로막대형 차트**를 대시보드에 탑재했습니다.
 
 ---
 
@@ -62,8 +70,10 @@ graph TD
     Proxy -->|2. 쿠키 내 JWT 세션 검증| Auth[src/lib/auth.ts]
     Auth -->|ADMIN 세션 유효| AdminPage[src/app/admin/page.tsx]
     Auth -->|USER 세션 / 대행 세션| MainPage[src/app/page.tsx]
-    AdminPage -->|3. Data Load / CRUD Action| db[(Neon Database)]
-    MainPage -->|3. Data Load / ToDo Action| db
+    AdminPage -->|3. AppLayout 감싸기| AdminUI[좌측 사이드바 + 통계 SVG 차트 노출]
+    MainPage -->|3. AppLayout 감싸기| MainUI[좌측 사이드바 + 어드민 전용 작성자 뱃지 노출]
+    AdminUI -->|4. Data Load / CRUD Action| db[(Neon Database)]
+    MainUI -->|4. Data Load / ToDo Action| db
     db -->|탈퇴 시 Cascade| TodoTable[Todo 레코드 연쇄 삭제]
     db -->|이벤트 발생| AuditTable[AuditLog 감사 기록 적재]
 ```

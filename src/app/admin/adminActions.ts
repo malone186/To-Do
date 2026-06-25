@@ -289,6 +289,33 @@ export async function getAdminStats() {
 
     const completionRate = totalTodos > 0 ? Math.round((completedTodos / totalTodos) * 100) : 0;
 
+    // 통계 그래프 시각화용 원시 데이터 일괄 추출 (안정적인 JS 기반 2차 집계)
+    const allTodos = await prisma.todo.findMany({
+      select: {
+        priority: true,
+        category: true,
+      },
+    });
+
+    // 1. 우선순위별 분포
+    const priorityStats = {
+      high: allTodos.filter((t) => t.priority === "HIGH").length,
+      medium: allTodos.filter((t) => t.priority === "MEDIUM").length,
+      low: allTodos.filter((t) => t.priority === "LOW").length,
+    };
+
+    // 2. 카테고리 TOP 5 분포
+    const categoryMap: { [key: string]: number } = {};
+    allTodos.forEach((t) => {
+      const cat = t.category?.trim() || "일반";
+      categoryMap[cat] = (categoryMap[cat] || 0) + 1;
+    });
+
+    const categoryStats = Object.entries(categoryMap)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
     return {
       success: true,
       data: {
@@ -296,6 +323,8 @@ export async function getAdminStats() {
         totalTodos,
         completedTodos,
         completionRate,
+        priorityStats,
+        categoryStats,
       },
     };
   } catch (error) {

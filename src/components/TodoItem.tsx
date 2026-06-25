@@ -15,6 +15,7 @@ interface Todo {
   dueDate: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  user?: { email: string } | null;
 }
 
 interface TodoItemProps {
@@ -248,6 +249,13 @@ export default function TodoItem({ todo, onStatusChange, onDelete, onUpdate }: T
                   {todo.title}
                 </span>
 
+                {/* 작성자 배지 (어드민 조회 시 활성화) */}
+                {todo.user?.email && (
+                  <span className="text-[10px] w-fit px-2 py-0.5 rounded-md bg-purple-500/10 border border-purple-500/20 text-purple-400 font-bold shrink-0">
+                    ✍️ {todo.user.email}
+                  </span>
+                )}
+
                 {/* 카테고리 칩 */}
                 {todo.category && (
                   <span className="text-[10px] w-fit px-2 py-0.5 rounded-md bg-zinc-100/80 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-850 shrink-0">
@@ -431,7 +439,12 @@ export default function TodoItem({ todo, onStatusChange, onDelete, onUpdate }: T
                   <div>
                     <strong>마감 기한:</strong> {todo.dueDate ? formatDueDate(todo.dueDate) : "없음"}
                   </div>
-                  <div>
+                  {todo.user?.email && (
+                    <div>
+                      <strong>작성자:</strong> {todo.user.email}
+                    </div>
+                  )}
+                  <div className="col-span-2">
                     <strong>등록 시간:</strong> {new Date(todo.createdAt).toLocaleString("ko-KR")}
                   </div>
                 </div>

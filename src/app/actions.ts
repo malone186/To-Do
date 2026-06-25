@@ -27,12 +27,22 @@ export async function getTodos() {
       return { success: false, error: "인증되지 않은 사용자입니다. 로그인해 주세요." };
     }
 
+    // 어드민은 전체 사용자 글 조회 가능, 일반 유저는 본인 글만 조회
+    const whereCondition = session.role === "ADMIN"
+      ? {}
+      : { userId: session.userId };
+
     const todos = await prisma.todo.findMany({
-      where: {
-        userId: session.userId,
-      },
+      where: whereCondition,
       orderBy: {
         createdAt: "desc",
+      },
+      include: {
+        user: {
+          select: {
+            email: true,
+          },
+        },
       },
     });
     return { success: true, data: todos };
@@ -101,12 +111,13 @@ export async function toggleTodo(id: string, isCompleted: boolean) {
       return { success: false, error: "올바르지 않은 식별자입니다." };
     }
 
-    // 본인 할 일만 수정 가능하도록 userId 조건 추가
+    // 어드민은 전체 글 제어 가능, 일반 유저는 본인 글만 제어
+    const whereCondition = session.role === "ADMIN"
+      ? { id }
+      : { id, userId: session.userId };
+
     const updatedTodo = await prisma.todo.update({
-      where: { 
-        id,
-        userId: session.userId,
-      },
+      where: whereCondition,
       data: { isCompleted },
     });
 
@@ -150,12 +161,13 @@ export async function updateTodo(
 
     const parsedDueDate = input.dueDate ? new Date(input.dueDate) : null;
 
-    // 본인 할 일만 수정 가능하도록 userId 조건 추가
+    // 어드민은 전체 글 제어 가능, 일반 유저는 본인 글만 제어
+    const whereCondition = session.role === "ADMIN"
+      ? { id }
+      : { id, userId: session.userId };
+
     const updatedTodo = await prisma.todo.update({
-      where: { 
-        id,
-        userId: session.userId,
-      },
+      where: whereCondition,
       data: {
         title: titleClean,
         description: input.description || null,
@@ -186,12 +198,13 @@ export async function deleteTodo(id: string) {
       return { success: false, error: "올바르지 않은 식별자입니다." };
     }
 
-    // 본인 할 일만 삭제 가능하도록 userId 조건 추가
+    // 어드민은 전체 글 제어 가능, 일반 유저는 본인 글만 제어
+    const whereCondition = session.role === "ADMIN"
+      ? { id }
+      : { id, userId: session.userId };
+
     await prisma.todo.delete({
-      where: { 
-        id,
-        userId: session.userId,
-      },
+      where: whereCondition,
     });
 
     revalidatePath("/");
@@ -212,12 +225,13 @@ export async function clearCompleted() {
       return { success: false, error: "인증되지 않은 사용자입니다." };
     }
 
-    // 본인이 완료한 Todo 항목들만 삭제 대상
+    // 어드민은 전체 완료 ToDo 일괄 제거 가능, 일반 유저는 본인 완료만 제거
+    const whereCondition = session.role === "ADMIN"
+      ? { isCompleted: true }
+      : { isCompleted: true, userId: session.userId };
+
     const deleteResult = await prisma.todo.deleteMany({
-      where: {
-        isCompleted: true,
-        userId: session.userId,
-      },
+      where: whereCondition,
     });
 
     revalidatePath("/");
