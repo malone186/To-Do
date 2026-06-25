@@ -1,0 +1,24 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ToDo 아이템 데이터 모델 정의
+model Todo {
+  id          String   @id @default(cuid()) // 고유 식별자 (CUID)
+  title       String   // 할 일 제목 (공백 제외 최소 1자, 최대 50자)
+  description String?  // 상세 설명 (선택)
+  isCompleted Boolean  @default(false)      // 완료 상태 플래그
+  priority    String   @default("MEDIUM")   // 우선순위 (HIGH | MEDIUM | LOW)
+  category    String   @default("일반")     // 카테고리 태그 (기본값: '일반')
+  dueDate     DateTime? // 마감 기한 (선택)
+  createdAt   DateTime @default(now())      // 생성 일시
+  updatedAt   DateTime @updatedAt          // 수정 일시
+}
