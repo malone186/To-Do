@@ -9,6 +9,7 @@ export interface SessionPayload {
   userId: string;
   email: string;
   role: string;
+  impersonatorId?: string | null;
   expiresAt: Date;
 }
 
@@ -16,7 +17,12 @@ export interface SessionPayload {
  * JWT 암호화 (세션 토큰 생성)
  */
 export async function encrypt(payload: Omit<SessionPayload, "expiresAt">) {
-  return new SignJWT({ userId: payload.userId, email: payload.email, role: payload.role })
+  return new SignJWT({ 
+    userId: payload.userId, 
+    email: payload.email, 
+    role: payload.role,
+    impersonatorId: payload.impersonatorId || null 
+  })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("24h")
@@ -40,10 +46,10 @@ export async function decrypt(session: string | undefined): Promise<SessionPaylo
 }
 
 /**
- * 쿠키에 세션 토큰 등록 (로그인 시 사용)
+ * 쿠키에 세션 토큰 등록 (로그인 및 대행 시 사용)
  */
-export async function createSession(userId: string, email: string, role: string) {
-  const token = await encrypt({ userId, email, role });
+export async function createSession(userId: string, email: string, role: string, impersonatorId?: string | null) {
+  const token = await encrypt({ userId, email, role, impersonatorId });
   const cookieStore = await cookies();
   
   cookieStore.set("session", token, {

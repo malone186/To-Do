@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
-import { getAllUsers } from "./adminActions";
+import { 
+  getAllUsers, 
+  getAdminStats, 
+  getAuditLogs, 
+  getNotices 
+} from "./adminActions";
 import AdminDashboardClient from "./AdminDashboardClient";
 
 export const revalidate = 0;
@@ -14,8 +19,26 @@ export default async function AdminPage() {
     redirect("/");
   }
 
-  const res = await getAllUsers();
-  const users = res.success && res.data ? res.data : [];
+  // 1. 전체 회원 로드
+  const usersRes = await getAllUsers();
+  const users = usersRes.success && usersRes.data ? usersRes.data : [];
+
+  // 2. 통계 지표 산정
+  const statsRes = await getAdminStats();
+  const stats = statsRes.success && statsRes.data ? statsRes.data : {
+    totalUsers: 0,
+    totalTodos: 0,
+    completedTodos: 0,
+    completionRate: 0,
+  };
+
+  // 3. 감사 로그 로드
+  const logsRes = await getAuditLogs();
+  const auditLogs = logsRes.success && logsRes.data ? logsRes.data as any[] : [];
+
+  // 4. 시스템 공지사항 로드
+  const noticesRes = await getNotices();
+  const notices = noticesRes.success && noticesRes.data ? noticesRes.data : [];
 
   return (
     <main className="min-h-screen bg-[#070708] text-zinc-100 flex flex-col font-sans relative overflow-hidden pb-16">
@@ -43,12 +66,18 @@ export default async function AdminPage() {
             System Control Panel
           </h1>
           <p className="text-xs text-zinc-500 mt-2 max-w-md">
-            전체 회원 관리 및 회원 데이터(To-Do 연계 항목) 조작이 가능한 최고 관리자 패널입니다.
+            전체 회원 관리, 권한 대행 제어, 시스템 통계 모니터링 및 공지 관리가 가능한 최고 관리자 패널입니다.
           </p>
         </header>
 
         {/* 회원 관리 어드민 대시보드 컴포넌트 렌더링 */}
-        <AdminDashboardClient initialUsers={users} currentUserId={session.userId} />
+        <AdminDashboardClient 
+          initialUsers={users} 
+          currentUserId={session.userId}
+          stats={stats}
+          auditLogs={auditLogs}
+          notices={notices}
+        />
       </div>
     </main>
   );

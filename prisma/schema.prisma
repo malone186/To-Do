@@ -35,3 +35,23 @@ model Todo {
   createdAt   DateTime @default(now())      // 생성 일시
   updatedAt   DateTime @updatedAt          // 수정 일시
 }
+
+// 시스템 공지사항 데이터 모델
+model SystemNotice {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// 관리자 작업 감사 로그 데이터 모델
+model AuditLog {
+  id           String   @id @default(cuid())
+  adminId      String
+  adminEmail   String
+  action       String   // 예: "USER_CREATE" | "USER_UPDATE" | "USER_DELETE" | "NOTICE_CREATE" | "NOTICE_DELETE"
+  targetUserId String?
+  details      String
+  createdAt    DateTime @default(now())
+}
