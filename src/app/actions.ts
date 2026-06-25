@@ -1,6 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
 // 우선순위 타입 정의
@@ -16,12 +17,20 @@ export interface CreateTodoInput {
 }
 
 /**
- * 1. 전체 할 일 목록 조회 (Read)
+ * 1. 로그인한 사용자의 전체 할 일 목록 조회 (Read)
  * - 시간 역순(createdAt DESC)으로 정렬하여 최근 추가된 내용이 상단에 배치되도록 합니다.
  */
 export async function getTodos() {
   try {
+    const session = await getSession();
+    if (!session) {
+      return { success: false, error: "인증되지 않은 사용자입니다. 로그인해 주세요." };
+    }
+
     const todos = await prisma.todo.findMany({
+      where: {
+        userId: session.userId,
+      },
       orderBy: {
         createdAt: "desc",
       },
@@ -39,6 +48,11 @@ export async function getTodos() {
  */
 export async function createTodo(input: CreateTodoInput) {
   try {
+    const session = await getSession();
+    if (!session) {
+      return { success: false, error: "인증되지 않은 사용자입니다. 로그인해 주세요." };
+    }
+
     const titleClean = input.title.trim();
 
     // 입력 데이터 검증 (Defensive Programming)
@@ -52,9 +66,10 @@ export async function createTodo(input: CreateTodoInput) {
     // 마감 기한 파싱 처리
     const parsedDueDate = input.dueDate ? new Date(input.dueDate) : null;
 
-    // SQLite에 신규 Todo 생성 적재
+    // PostgreSQL에 신규 Todo 생성 및 userId 매핑
     const newTodo = await prisma.todo.create({
       data: {
+        userId: session.userId,
         title: titleClean,
         description: input.description || null,
         priority: input.priority || "MEDIUM",
@@ -78,12 +93,20 @@ export async function createTodo(input: CreateTodoInput) {
  */
 export async function toggleTodo(id: string, isCompleted: boolean) {
   try {
+    const session = await getSession();
+    if (!session) {
+      return { success: false, error: "인증되지 않은 사용자입니다." };
+    }
     if (!id) {
       return { success: false, error: "올바르지 않은 식별자입니다." };
     }
 
+    // 본인 할 일만 수정 가능하도록 userId 조건 추가
     const updatedTodo = await prisma.todo.update({
-      where: { id },
+      where: { 
+        id,
+        userId: session.userId,
+      },
       data: { isCompleted },
     });
 
@@ -109,6 +132,11 @@ export async function updateTodo(
   }
 ) {
   try {
+    const session = await getSession();
+    if (!session) {
+      return { success: false, error: "인증되지 않은 사용자입니다." };
+    }
+
     const titleClean = input.title.trim();
     if (!id) {
       return { success: false, error: "올바르지 않은 식별자입니다." };
@@ -122,8 +150,12 @@ export async function updateTodo(
 
     const parsedDueDate = input.dueDate ? new Date(input.dueDate) : null;
 
+    // 본인 할 일만 수정 가능하도록 userId 조건 추가
     const updatedTodo = await prisma.todo.update({
-      where: { id },
+      where: { 
+        id,
+        userId: session.userId,
+      },
       data: {
         title: titleClean,
         description: input.description || null,
@@ -146,12 +178,20 @@ export async function updateTodo(
  */
 export async function deleteTodo(id: string) {
   try {
+    const session = await getSession();
+    if (!session) {
+      return { success: false, error: "인증되지 않은 사용자입니다." };
+    }
     if (!id) {
       return { success: false, error: "올바르지 않은 식별자입니다." };
     }
 
+    // 본인 할 일만 삭제 가능하도록 userId 조건 추가
     await prisma.todo.delete({
-      where: { id },
+      where: { 
+        id,
+        userId: session.userId,
+      },
     });
 
     revalidatePath("/");
@@ -167,9 +207,16 @@ export async function deleteTodo(id: string) {
  */
 export async function clearCompleted() {
   try {
+    const session = await getSession();
+    if (!session) {
+      return { success: false, error: "인증되지 않은 사용자입니다." };
+    }
+
+    // 본인이 완료한 Todo 항목들만 삭제 대상
     const deleteResult = await prisma.todo.deleteMany({
       where: {
         isCompleted: true,
+        userId: session.userId,
       },
     });
 

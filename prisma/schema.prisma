@@ -11,9 +11,21 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+// 사용자 모델 정의
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  role      String   @default("USER") // "USER" 또는 "ADMIN"
+  createdAt DateTime @default(now())
+  todos     Todo[]
+}
+
 // ToDo 아이템 데이터 모델 정의
 model Todo {
   id          String   @id @default(cuid()) // 고유 식별자 (CUID)
+  userId      String   // 연결된 사용자 외래 키
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   title       String   // 할 일 제목 (공백 제외 최소 1자, 최대 50자)
   description String?  // 상세 설명 (선택)
   isCompleted Boolean  @default(false)      // 완료 상태 플래그
