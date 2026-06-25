@@ -59,6 +59,13 @@ export default function LoginPage() {
             </button>
           </div>
 
+          {/* 가입 신청 완료 성공 메시지 표시 */}
+          {activeTab === "signup" && signupState?.success && signupState?.message && (
+            <div className="mb-6 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-xs font-semibold text-emerald-400 text-center">
+              🎉 {signupState.message}
+            </div>
+          )}
+
           {/* 에러 메시지 표시 */}
           {errorMsg && (
             <div className="mb-6 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-xs font-medium text-red-400 text-center animate-shake">

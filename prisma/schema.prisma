@@ -17,6 +17,7 @@ model User {
   email     String   @unique
   password  String
   role      String   @default("USER") // "USER" 또는 "ADMIN"
+  status    String   @default("APPROVED") // "PENDING", "APPROVED", "REJECTED"
   createdAt DateTime @default(now())
   todos     Todo[]
 }

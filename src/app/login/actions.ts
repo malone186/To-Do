@@ -50,24 +50,24 @@ export async function signUp(prevState: any, formData: FormData) {
     // 일반 회원가입 시에는 보안상 무조건 USER 권한으로 고정 가입 처리
     const role = "USER";
 
-    // 사용자 생성
-    const user = await prisma.user.create({
+    // 사용자 생성 (기본 상태는 PENDING)
+    await prisma.user.create({
       data: {
         email,
         password: hashedPassword,
         role,
+        status: "PENDING",
       },
     });
 
-    // 가입 완료 후 자동 로그인 세션 생성
-    await createSession(user.id, user.email, user.role);
+    return { 
+      success: true, 
+      message: "회원가입 신청이 완료되었습니다. 관리자의 승인 완료 후 로그인이 가능합니다." 
+    };
   } catch (error) {
     console.error("회원가입 오류:", error);
     return { success: false, error: "회원가입 처리 중 데이터베이스 오류가 발생했습니다." };
   }
-
-  // 성공 시 홈 화면으로 리다이렉트 (try-catch 외부에서 처리하여 Next.js 내부 동작 보장)
-  redirect("/");
 }
 
 /**
@@ -95,6 +95,14 @@ export async function login(prevState: any, formData: FormData) {
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return { success: false, error: "이메일 또는 비밀번호가 올바르지 않습니다." };
+    }
+
+    // 가입 승인 및 거절 상태 검증
+    if (user.status === "PENDING") {
+      return { success: false, error: "아직 관리자의 가입 승인을 대기 중입니다." };
+    }
+    if (user.status === "REJECTED") {
+      return { success: false, error: "가입 승인이 거절된 계정입니다. 관리자에게 문의하세요." };
     }
 
     // 세션 생성 (권한 포함)

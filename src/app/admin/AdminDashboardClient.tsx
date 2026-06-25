@@ -8,13 +8,16 @@ import {
   adminDeleteUser, 
   startImpersonate,
   addNotice,
-  deleteNotice
+  deleteNotice,
+  adminApproveUser,
+  adminRejectUser
 } from "./adminActions";
 
 interface UserItem {
   id: string;
   email: string;
   role: string;
+  status: string;
   createdAt: Date;
   todoCount: number;
 }
@@ -208,6 +211,38 @@ export default function AdminDashboardClient({
     });
   };
 
+  // 회원 가입 승인 실행
+  const handleApproveUser = async (userId: string, email: string) => {
+    if (!confirm(`정말로 회원 (${email})의 가입 신청을 승인하시겠습니까?`)) {
+      return;
+    }
+
+    startTransition(async () => {
+      const res = await adminApproveUser(userId);
+      if (res.success) {
+        router.refresh();
+      } else {
+        alert(res.error || "가입 승인 실패");
+      }
+    });
+  };
+
+  // 회원 가입 거절 실행
+  const handleRejectUser = async (userId: string, email: string) => {
+    if (!confirm(`정말로 회원 (${email})의 가입 신청을 거절하시겠습니까?`)) {
+      return;
+    }
+
+    startTransition(async () => {
+      const res = await adminRejectUser(userId);
+      if (res.success) {
+        router.refresh();
+      } else {
+        alert(res.error || "가입 거절 실패");
+      }
+    });
+  };
+
   return (
     <div className="space-y-8">
       {/* 어드민 서브 네비게이션 탭 */}
@@ -315,6 +350,7 @@ export default function AdminDashboardClient({
                     <tr className="border-b border-zinc-800 text-xs font-bold text-zinc-400 bg-zinc-950/20">
                       <th className="px-6 py-4">사용자</th>
                       <th className="px-6 py-4">권한</th>
+                      <th className="px-6 py-4">가입 상태</th>
                       <th className="px-6 py-4">할 일 개수</th>
                       <th className="px-6 py-4 text-right">대행 및 제어</th>
                     </tr>
@@ -339,29 +375,75 @@ export default function AdminDashboardClient({
                             {user.role}
                           </span>
                         </td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                            user.status === "APPROVED"
+                              ? "bg-green-500/10 border border-green-500/20 text-green-400"
+                              : user.status === "REJECTED"
+                              ? "bg-red-500/10 border border-red-500/20 text-red-400"
+                              : "bg-amber-500/10 border border-amber-500/20 text-amber-400"
+                          }`}>
+                            {user.status || "APPROVED"}
+                          </span>
+                        </td>
                         <td className="px-6 py-4 font-semibold text-zinc-400">📝 {user.todoCount}개</td>
                         <td className="px-6 py-4 text-right space-x-1.5">
-                          {user.id !== currentUserId && user.role !== "ADMIN" && (
-                            <button
-                              onClick={() => handleStartImpersonate(user.id, user.email)}
-                              className="text-xs px-2.5 py-1.5 rounded-lg bg-purple-600/10 hover:bg-purple-600/20 border border-purple-500/20 text-purple-400 font-semibold cursor-pointer"
-                            >
-                              대행 로그인
-                            </button>
+                          {user.status === "PENDING" ? (
+                            <>
+                              <button
+                                onClick={() => handleApproveUser(user.id, user.email)}
+                                className="text-xs px-2.5 py-1.5 rounded-lg bg-green-600/10 hover:bg-green-600/20 border border-green-500/20 text-green-400 font-bold cursor-pointer transition-all"
+                              >
+                                승인
+                              </button>
+                              <button
+                                onClick={() => handleRejectUser(user.id, user.email)}
+                                className="text-xs px-2.5 py-1.5 rounded-lg bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 text-red-400 font-bold cursor-pointer transition-all"
+                              >
+                                거절
+                              </button>
+                            </>
+                          ) : user.status === "REJECTED" ? (
+                            <>
+                              <button
+                                onClick={() => handleApproveUser(user.id, user.email)}
+                                className="text-xs px-2.5 py-1.5 rounded-lg bg-green-600/10 hover:bg-green-600/20 border border-green-500/20 text-green-400 font-bold cursor-pointer transition-all"
+                              >
+                                재승인
+                              </button>
+                              <button
+                                onClick={() => handleDeleteUser(user.id, user.email)}
+                                disabled={user.id === currentUserId}
+                                className="text-xs px-2.5 py-1.5 rounded-lg border border-red-900/30 text-red-400 hover:bg-red-500/10 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-all"
+                              >
+                                삭제
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              {user.id !== currentUserId && user.role !== "ADMIN" && (
+                                <button
+                                  onClick={() => handleStartImpersonate(user.id, user.email)}
+                                  className="text-xs px-2.5 py-1.5 rounded-lg bg-purple-600/10 hover:bg-purple-600/20 border border-purple-500/20 text-purple-400 font-semibold cursor-pointer transition-all"
+                                >
+                                  대행 로그인
+                                </button>
+                              )}
+                              <button
+                                onClick={() => startEdit(user)}
+                                className="text-xs px-2.5 py-1.5 rounded-lg border border-zinc-700 text-zinc-300 hover:bg-zinc-800 cursor-pointer transition-all"
+                              >
+                                수정
+                              </button>
+                              <button
+                                onClick={() => handleDeleteUser(user.id, user.email)}
+                                disabled={user.id === currentUserId}
+                                className="text-xs px-2.5 py-1.5 rounded-lg border border-red-900/30 text-red-400 hover:bg-red-500/10 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-all"
+                              >
+                                삭제
+                              </button>
+                            </>
                           )}
-                          <button
-                            onClick={() => startEdit(user)}
-                            className="text-xs px-2.5 py-1.5 rounded-lg border border-zinc-700 text-zinc-300 hover:bg-zinc-800 cursor-pointer"
-                          >
-                            수정
-                          </button>
-                          <button
-                            onClick={() => handleDeleteUser(user.id, user.email)}
-                            disabled={user.id === currentUserId}
-                            className="text-xs px-2.5 py-1.5 rounded-lg border border-red-900/30 text-red-400 hover:bg-red-500/10 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-                          >
-                            삭제
-                          </button>
                         </td>
                       </tr>
                     ))}

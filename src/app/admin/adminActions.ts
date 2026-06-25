@@ -60,6 +60,7 @@ export async function getAllUsers() {
         id: true,
         email: true,
         role: true,
+        status: true,
         createdAt: true,
         _count: {
           select: { todos: true },
@@ -73,6 +74,7 @@ export async function getAllUsers() {
         id: user.id,
         email: user.email,
         role: user.role,
+        status: user.status,
         createdAt: user.createdAt,
         todoCount: user._count.todos,
       })),
@@ -128,6 +130,7 @@ export async function adminAddUser(formData: FormData) {
         email,
         password: hashedPassword,
         role,
+        status: "APPROVED",
       },
     });
 
@@ -499,5 +502,77 @@ export async function stopImpersonate() {
   // 홈화면 리다이렉트 및 리벨리데이트
   revalidatePath("/");
   redirect("/");
+}
+
+/**
+ * 12. 가입 승인 처리 (Approve)
+ */
+export async function adminApproveUser(userId: string) {
+  const auth = await verifyAdmin();
+  if (!auth.isAuthorized || !auth.session) {
+    return { success: false, error: auth.error };
+  }
+
+  if (!userId) {
+    return { success: false, error: "올바르지 않은 사용자 ID입니다." };
+  }
+
+  try {
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { status: "APPROVED" },
+    });
+
+    // 감사 로그 기록
+    await logAction(
+      auth.session.userId,
+      auth.session.email,
+      "USER_APPROVE",
+      userId,
+      `가입 승인 처리 완료: ${updatedUser.email}`
+    );
+
+    revalidatePath("/admin");
+    return { success: true };
+  } catch (error) {
+    console.error("어드민 승인 처리 중 에러:", error);
+    return { success: false, error: "승인 처리에 실패했습니다." };
+  }
+}
+
+/**
+ * 13. 가입 거절 처리 (Reject)
+ */
+export async function adminRejectUser(userId: string) {
+  const auth = await verifyAdmin();
+  if (!auth.isAuthorized || !auth.session) {
+    return { success: false, error: auth.error };
+  }
+
+  if (!userId) {
+    return { success: false, error: "올바르지 않은 사용자 ID입니다." };
+  }
+
+  try {
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { status: "REJECTED" },
+    });
+
+    // 감사 로그 기록
+    await logAction(
+      auth.session.userId,
+      auth.session.email,
+      "USER_REJECT",
+      userId,
+      `가입 거절 처리 완료: ${updatedUser.email}`
+    );
+
+    revalidatePath("/admin");
+    return { success: true };
+  } catch (error) {
+    console.error("어드민 거절 처리 중 에러:", error);
+    return { success: false, error: "거절 처리에 실패했습니다." };
+  }
 }
 
